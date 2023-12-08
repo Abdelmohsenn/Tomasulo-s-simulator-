@@ -20,9 +20,9 @@ void LoadInstructions();
 
 // Constants
 const int NUM_REGISTERS = 8; // as in the prompt R0 => R7
-const int MEMORY_SIZE = 128 * 1024 / 2;
+const int MEMORY_SIZE = 128 * 1024 / 2; // 128 kb mem
 
-// Instruction durations
+// Static Instruction durations assumptions
 const int loadDur = 3;   // 1 (compute address) + 2 (read from memory)
 const int storeDur = 3;  // 1 (compute address) + 2 (write to memory)
 const int bneDuration = 1;
@@ -73,7 +73,7 @@ public:
     vector<ReservationStation> DIVRES;
 
     ReservationStationsCount() {
-        // Initialize stations
+        // Initialize stations bl sizes
         ADDRES.resize(3);
         ADDIRES.resize(3);
         STORERES.resize(2);
@@ -98,15 +98,16 @@ struct Instruction {
 struct Register {
     int value;
     bool busy = false;
-    string state = "Free";
+    string state = "Free"; // idk how to use this still
 };
 
 // Global Variables
 vector<Register> registers(NUM_REGISTERS);
-vector<ReservationStation> Reserves;  // Initialize according to the number of each type
-int memory[MEMORY_SIZE];
 
-queue<Instruction> instructionQueue;
+vector<ReservationStation> Reserves;  // da el station el adeem. kan total. idk law lesa hnhtago
+int memory[MEMORY_SIZE]; //main mem
+
+queue<Instruction> instructionQueue; // queue of instructions
 
 
     
@@ -124,6 +125,7 @@ queue<Instruction> instructionQueue;
             cerr << "Error opening file: " << path << endl;
             return;
         } else {
+            
             while (getline(file, line)) {
                 istringstream reader(line);
                 Instruction inst;
@@ -133,11 +135,11 @@ queue<Instruction> instructionQueue;
                 reader >> rs1;
                 reader >> rs2;
 
-                inst.destination_reg = stoi(destRegStr.substr(1));
-                inst.rs1 = stoi(rs1.substr(1));
-                inst.rs2 = stoi(rs2.substr(1));
+                inst.destination_reg = stoi(destRegStr.substr(1)); // tany index mn awl reg
+                inst.rs1 = stoi(rs1.substr(1)); // tany index mn tany reg
+                inst.rs2 = stoi(rs2.substr(1)); // tany index mn talet reg
 
-                instructionQueue.push(inst);
+                instructionQueue.push(inst); // putting the instructions in the queue to use later on
             }
         }
 
@@ -256,9 +258,9 @@ void LoadInstructions() {
 
 int main() {
     int currentCycle = 0;
-    int totalCycles = 100;  // Adjust as necessary
+    int totalCycles = 100;
 
-    InitializeRegs();// initialize regs
+    InitializeRegs();// initialize regs b zeros
     ReservationStationsCount stationCount;
     
     
