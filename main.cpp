@@ -43,9 +43,11 @@ struct op {
     string type;
 };
 
-struct ReservationStation {
+class ReservationStation {
+public:
     bool busy = false;
     op OP;
+    int stations;  // Number of stations for this type
     int vj = -1;
     int vk = -1;
     int qj = -1;
@@ -55,9 +57,36 @@ struct ReservationStation {
     int execStartCycle = -1;
     int execCompleteCycle = -1;
     int writeCycle = -1;
-    
     int duration = -1;
+
 };
+
+class ReservationStationsCount {
+public:
+    vector<ReservationStation> ADDRES;
+    vector<ReservationStation> ADDIRES;
+    vector<ReservationStation> STORERES;
+    vector<ReservationStation> LOADRES;
+    vector<ReservationStation> RETRES;
+    vector<ReservationStation> CALLRES;
+    vector<ReservationStation> BNERES;
+    vector<ReservationStation> NANDRES;
+    vector<ReservationStation> DIVRES;
+
+    ReservationStationsCount() {
+        // Initialize stations
+        ADDRES.resize(3);
+        ADDIRES.resize(3);
+        STORERES.resize(2);
+        LOADRES.resize(2);
+        RETRES.resize(1);
+        CALLRES.resize(1);
+        BNERES.resize(1);
+        NANDRES.resize(1);
+        DIVRES.resize(1);
+    }
+};
+
 
 struct Instruction {
     op OP;
@@ -70,6 +99,7 @@ struct Instruction {
 struct Register {
     int value;
     bool busy = false;
+    string state = "Free";
 };
 
 // Global Variables
@@ -107,10 +137,10 @@ void read_and_Print() {
             inst.rs1 = stoi(rs1.substr(1));
             inst.rs2 = stoi(rs2.substr(1));
 
-            cout << "Instruction: " << inst.OP.type << endl;
-            cout << "Rd: " << inst.destination_reg << endl;
-            cout << "Rs1: " << inst.rs1 << endl;
-            cout << "Rs2: " << inst.rs2 << endl;
+//            cout << "Instruction: " << inst.OP.type << endl;
+//            cout << "Rd: " << inst.destination_reg << endl;
+//            cout << "Rs1: " << inst.rs1 << endl;
+//            cout << "Rs2: " << inst.rs2 << endl;
 
             instructionQueue.push(inst);
         }
@@ -180,8 +210,8 @@ void Execute(int currentCycle) {
         {
             if (station.execStartCycle == -1) {
                 // Check if ready
-                if ((station.qj == -1 || !registers[station.qj].busy) &&
-                    (station.qk == -1 || !registers[station.qk].busy)) {
+                if ((station.qj == -1 || !registers[station.qj].busy) && (station.qk == -1 || !registers[station.qk].busy))
+                {
                     station.execStartCycle = currentCycle;
                 }
             }
@@ -202,14 +232,6 @@ void WriteResult(int currentCycle) {
     }
 }
 
-
-void Commit(int currentCycle) {
-    for (auto& station : Reserves) {
-        if (station.busy && station.writeCycle != -1) {
-            station.busy = false;
-        }
-    }
-}
 
 void InitializeRegs() {
     for (int i = 0; i < NUM_REGISTERS; ++i) {
@@ -232,14 +254,24 @@ int main() {
     int currentCycle = 0;
     int totalCycles = 100;  // Adjust as necessary
 
-    InitializeRegs();
-//    LoadInstructions();
+    InitializeRegs();// initialize regs
+    ReservationStationsCount stationCount;
+
+    cout << "ADD stations: " << stationCount.ADDRES.size() << endl;
+    cout << "LOAD stations: " << stationCount.LOADRES.size() << endl;
+    cout << "STORE stations: " << stationCount.STORERES.size() << endl;
+    cout << "ADDI stations: " << stationCount.ADDIRES.size() << endl;
+    cout << "RET stations: " << stationCount.RETRES.size() << endl;
+    cout << "CALL stations: " << stationCount.CALLRES.size() << endl;
+    cout << "DIV stations: " << stationCount.DIVRES.size() << endl;
+    cout << "BNE stations: " << stationCount.ADDRES.size() << endl;
+    cout << "NAND stations: " << stationCount.ADDRES.size() << endl;
+
 
     do {
         Issuing(currentCycle);
         Execute(currentCycle);
         WriteResult(currentCycle);
-        Commit(currentCycle);
         currentCycle++;
     }
     while ((currentCycle < totalCycles));
