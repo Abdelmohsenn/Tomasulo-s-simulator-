@@ -68,7 +68,7 @@ struct Instruction {
 };
 
 struct Register {
-    int value = 0;
+    int value;
     bool busy = false;
 };
 
@@ -81,9 +81,12 @@ queue<Instruction> instructionQueue;
 
 
 void read_and_Print() {
-    
     ifstream file;
     string line;
+    string destRegStr;
+    string rs1;
+    string rs2;
+
     string path = "/Users/muhammadabdelmohsen/Desktop/CE Projects/Computer Arch Project/Arch-project2/Tumasulo's.txt";
     file.open(path);
 
@@ -95,23 +98,28 @@ void read_and_Print() {
             istringstream reader(line);
             Instruction inst;
 
-            reader >> inst.OP.type >> inst.destination_reg >> inst.rs1 >> inst.rs2;
-            
-            cout<< "Instruction: " << inst.OP.type<<endl;
-            cout<<"Rd: " <<inst.destination_reg<<endl;
+            reader >> inst.OP.type;
+            reader >> destRegStr;
+            reader >> rs1;
+            reader >> rs2;
 
+            inst.destination_reg = stoi(destRegStr.substr(1));
+            inst.rs1 = stoi(rs1.substr(1));
+            inst.rs2 = stoi(rs2.substr(1));
 
+            cout << "Instruction: " << inst.OP.type << endl;
+            cout << "Rd: " << inst.destination_reg << endl;
+            cout << "Rs1: " << inst.rs1 << endl;
+            cout << "Rs2: " << inst.rs2 << endl;
 
             instructionQueue.push(inst);
         }
     }
 
-    // values el registers
+    // values el registers hena
     for (int i = 0; i < NUM_REGISTERS; ++i) {
         cout << "Register R" << i << ": " << registers[i].value << endl;
-        
     }
-    
 }
 
 
