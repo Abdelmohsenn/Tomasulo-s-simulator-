@@ -14,7 +14,6 @@ using namespace std;
 void Issuing(int);
 void Execute(int);
 void WriteResult(int);
-void Commit(int);
 void InitializeSystem();
 void LoadInstructions();
 
@@ -110,96 +109,103 @@ int memory[MEMORY_SIZE];
 queue<Instruction> instructionQueue;
 
 
-void read_and_Print() {
-    ifstream file;
-    string line;
-    string destRegStr;
-    string rs1;
-    string rs2;
+    
+    void read_and_Print() {
+        ifstream file;
+        string line;
+        string destRegStr;
+        string rs1;
+        string rs2;
 
-    string path = "/Users/muhammadabdelmohsen/Desktop/CE Projects/Computer Arch Project/Arch-project2/Tumasulo's.txt";
-    file.open(path);
+        string path = "/Users/muhammadabdelmohsen/Desktop/CE Projects/Computer Arch Project/Arch-project2/Tumasulo's.txt";
+        file.open(path);
 
-    if (!file.is_open()) {
-        cerr << "Error opening file: " << path << endl;
-        return;
-    } else {
-        while (getline(file, line)) {
-            istringstream reader(line);
-            Instruction inst;
+        if (!file.is_open()) {
+            cerr << "Error opening file: " << path << endl;
+            return;
+        } else {
+            while (getline(file, line)) {
+                istringstream reader(line);
+                Instruction inst;
 
-            reader >> inst.OP.type;
-            reader >> destRegStr;
-            reader >> rs1;
-            reader >> rs2;
+                reader >> inst.OP.type;
+                reader >> destRegStr;
+                reader >> rs1;
+                reader >> rs2;
 
-            inst.destination_reg = stoi(destRegStr.substr(1));
-            inst.rs1 = stoi(rs1.substr(1));
-            inst.rs2 = stoi(rs2.substr(1));
+                inst.destination_reg = stoi(destRegStr.substr(1));
+                inst.rs1 = stoi(rs1.substr(1));
+                inst.rs2 = stoi(rs2.substr(1));
 
-//            cout << "Instruction: " << inst.OP.type << endl;
-//            cout << "Rd: " << inst.destination_reg << endl;
-//            cout << "Rs1: " << inst.rs1 << endl;
-//            cout << "Rs2: " << inst.rs2 << endl;
-
-            instructionQueue.push(inst);
+                instructionQueue.push(inst);
+            }
         }
+
+        // values el registers hena
+        for (int i = 0; i < NUM_REGISTERS; ++i) {
+            cout << "Register R" << i << ": " << registers[i].value << endl;
+        }
+
+        // test el queue gowah eh
+        
+//        cout << "Loaded Instructions:" << endl;
+//        queue<Instruction> tempQueue = instructionQueue; // Copy the queue for printing
+//        while (!tempQueue.empty()) {
+//            Instruction inst = tempQueue.front();
+//            cout << "Instruction: " << inst.OP.type << inst.destination_reg
+//                  << inst.rs1  << inst.rs2 << endl;
+//            tempQueue.pop();
+//        }
     }
 
-    // values el registers hena
-    for (int i = 0; i < NUM_REGISTERS; ++i) {
-        cout << "Register R" << i << ": " << registers[i].value << endl;
-    }
-}
 
 
 
 void Issuing(int currentCycle) {
     if (!instructionQueue.empty()) {
         Instruction& inst = instructionQueue.front();
+        ReservationStationsCount stationCount;
         
-        for (auto& station : Reserves) {
-            if (!station.busy) {
-                station.busy = true;
-                station.OP = inst.OP;
-                station.issueTime = currentCycle;
-
-                // b initialize every inst to its default duration
-                if (station.OP.type == "LOAD") {
-                    station.duration = loadDur;
-                    
-                } else if (station.OP.type == "STORE") {
-                    station.duration = storeDur;
-                    
-                } else if (station.OP.type == "BNE") {
-                    station.duration = bneDuration;
-                    
-                } else if (station.OP.type == "RET") {
-                    station.duration = ReturnDuration;
-                    
-                } else if (station.OP.type == "ADD" || station.OP.type == "ADDI") {
-                    station.duration = AddAddiDuration;
-                    
-                } else if (station.OP.type == "CALL") {
-                    station.duration = CallDuration;
-                    
-                } else if (station.OP.type == "NAND") {
-                    station.duration = nandDuration;
-                    
-                } else if (station.OP.type == "DIV") {
-                    station.duration = DIVDuration;
-                    
-                } else {
-                    station.duration = 1;
+        // Check the instruction type and use the corresponding reservation stations
+        if (inst.OP.type == "ADD" || inst.OP.type == "ADDI") {
+            for (auto& station : stationCount.ADDRES) {
+                if (!station.busy) {
+                    // Check other conditions for ADD and ADDI operations
+                    station.busy = true;
+                    station.OP = inst.OP;
+                    station.issueTime = currentCycle;
+                    station.duration =  AddAddiDuration;
+                    instructionQueue.pop();
+                    break;
                 }
-
-                instructionQueue.pop();
-                
-                break;
+            }
+        }
+        else if (inst.OP.type  == "ADDI") {
+            for (auto& station : stationCount.ADDRES) {
+                if (!station.busy) {
+                    // Check other conditions for ADD and ADDI operations
+                    station.busy = true;
+                    station.OP = inst.OP;
+                    station.issueTime = currentCycle;
+                    station.duration =  AddAddiDuration;
+                    instructionQueue.pop();
+                    break;
+                }
+            }
+        }
+        else if (inst.OP.type == "LOAD") {
+            for (auto& station : stationCount.LOADRES) {
+                if (!station.busy) {
+                    // Check other conditions for LOAD operations
+                    station.busy = true;
+                    station.OP = inst.OP;
+                    station.issueTime = currentCycle;
+                    station.duration = loadDur;
+                    instructionQueue.pop();
+                    break;
+                }
             }
             
-            else
-                continue;
         }
     }
 }
@@ -240,8 +246,6 @@ void InitializeRegs() {
     }
     registers[0].value=0;
     registers[0].busy=true; // 3ashan mesh 3ayzo Yetghayar
-
-    Reserves.resize(10);
  
 }
 
@@ -256,7 +260,9 @@ int main() {
 
     InitializeRegs();// initialize regs
     ReservationStationsCount stationCount;
-
+    
+    
+// test count el stations
     cout << "ADD stations: " << stationCount.ADDRES.size() << endl;
     cout << "LOAD stations: " << stationCount.LOADRES.size() << endl;
     cout << "STORE stations: " << stationCount.STORERES.size() << endl;
@@ -281,45 +287,4 @@ int main() {
     return 0;
 }
 
-void ADD(int ){
-    
-    Instruction instr;
-    
-    registers[instr.destination_reg].value = registers[instr.rs1].value + registers[instr.rs2].value ;
-    
-}
-void ADDI(int ){
-    
-    Instruction instr;
 
-    registers[instr.destination_reg].value = registers[instr.rs1].value + instr.offset_imm;
-
-}
-void LOAD(int ){
-    
-    
-}
-void STORE(int ){
-    
-    
-}
-void BNE(int ){
-    
-    
-}
-void CALL(int ){
-    
-    
-}
-void RET(int ){
-    
-    
-}
-void DIV(int ){
-    
-    
-}
-void NAND(int ){
-    
-    
-}
