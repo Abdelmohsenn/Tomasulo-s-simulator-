@@ -169,7 +169,7 @@ void Issuing(int currentCycle) {
         ReservationStationsCount stationCount;
         
         // Check the instruction type and use the corresponding reservation stations
-        if (inst.OP.type == "ADD" || inst.OP.type == "ADDI") {
+        if (inst.OP.type == "ADD") {
             for (auto& station : stationCount.ADDRES) {
                 if (!station.busy) {
                     // Check other conditions for ADD and ADDI operations
