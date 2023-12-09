@@ -64,7 +64,6 @@ public:
 class ReservationStationsCount {
 public:
     vector<ReservationStation> ADDRES;
-    vector<ReservationStation> ADDIRES;
     vector<ReservationStation> STORERES;
     vector<ReservationStation> LOADRES;
     vector<ReservationStation> RETRES;
@@ -76,7 +75,6 @@ public:
     ReservationStationsCount() {
         // Initialize stations bl sizes
         ADDRES.resize(3);
-        ADDIRES.resize(3);
         STORERES.resize(2);
         LOADRES.resize(2);
         RETRES.resize(1);
@@ -170,13 +168,21 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
     if (!instructionQueue.empty()) {
         Instruction inst = instructionQueue.front();
 
-        if (inst.OP.type == "ADD") {
+        if (inst.OP.type == "ADD" || inst.OP.type == "ADDI") {
             auto& stations = stationCount.ADDRES;
 
             for (int i = 0; i < stations.size(); ++i) {
                 if (!stations[i].busy) {
                     bool rs1Ready = !registers[inst.rs1].busy || registers[inst.rs1].Qi == -1;
-                    bool rs2Ready = !registers[inst.rs2].busy || registers[inst.rs2].Qi == -1;
+                    bool rs2Ready = true;
+
+                    if (inst.OP.type == "ADD" && registers[inst.rs2].Qi != -1) {
+                        rs2Ready = false;
+                    }
+
+                    if (inst.OP.type == "ADDI") {
+                        rs2Ready = true;  // Immediate value is always ready
+                    }
 
                     if (rs1Ready && rs2Ready) {
                         stations[i].busy = true;
@@ -187,13 +193,19 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
                             stations[i].vj = registers[inst.rs1].value;
                             stations[i].qj = 0;
                         }
-                        cout << stations[i].OP.type;
-                        if (registers[inst.rs2].Qi != -1) {
-                            stations[i].qk = registers[inst.rs2].Qi;
-                        } else {
-                            stations[i].vk = registers[inst.rs2].value;
-                            stations[i].qk = 0;
+
+                        if (inst.OP.type == "ADD") {
+                            if (registers[inst.rs2].Qi != -1) {
+                                stations[i].qk = registers[inst.rs2].Qi;
+                            } else {
+                                stations[i].vk = registers[inst.rs2].value;
+                                stations[i].qk = 0;
+                            }
+                        } else if (inst.OP.type == "ADDI") {
+                            stations[i].vk = inst.offset_imm;
+                            stations[i].qk = 0;  // Immediate value is always ready
                         }
+
                         stations[i].issueTime = currentCycle;
                         stations[i].duration = AddAddiDuration;
                         stations[i].destination_reg = inst.destination_reg;
@@ -206,11 +218,10 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
                     }
                 }
             }
-        } else {
-            // Handle other instruction types if needed
         }
     }
 }
+
 
 
 
@@ -227,6 +238,13 @@ void Execute(int currentCycle, ReservationStationsCount& stationCount) {
             }
 //            cout<<"Result"<<station.result<<endl;;
         }
+        else if (station.busy && station.OP.type == "ADDI" && station.issueTime != -1 && station.execCompleteCycle == -1) {
+            if (station.qj == 0 && station.qk == 0) {
+                station.result = station.vj + station.vk;
+                station.execCompleteCycle = currentCycle; // Mark the cycle the execution completes
+            }
+//            cout<<"Result"<<station.result<<endl;;
+        }
     }
 }
 
@@ -234,22 +252,22 @@ void WriteResult(int currentCycle, ReservationStationsCount& stationCount) {
     
     for (auto& station : stationCount.ADDRES) {
         if (station.OP.type == "ADD" && station.busy && station.execCompleteCycle != -1 && station.writeCycle == -1) {
-            // Check if the destination register's Qi matches the index of the station
-            
+
             if (registers[station.destination_reg].Qi == (&station - &stationCount.ADDRES[0])) {
-
                 registers[station.destination_reg].value = station.result;
-                registers[station.destination_reg].Qi = -1; // Clear the Qi for the register
+                registers[station.destination_reg].Qi = -1;
             }
-            
-            
-            
         }
-//        cout<<"Result:"<<registers[station.destination_reg].value<<endl;
+        else if (station.OP.type == "ADDI" && station.busy && station.execCompleteCycle != -1 && station.writeCycle == -1) {
 
+            if (registers[station.destination_reg].Qi == (&station - &stationCount.ADDRES[0])) {
+                registers[station.destination_reg].value = station.result;
+                registers[station.destination_reg].Qi = -1;
+            }
+        }
     }
-    
 }
+
 
 
 
