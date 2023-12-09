@@ -180,32 +180,41 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
 
             for (int i = 0; i < stations.size(); ++i) {
                 if (!stations[i].busy) {
-                    // Check if the source registers are ready or being written to by another station
                     bool rs1Ready = !registers[inst.rs1].busy || registers[inst.rs1].Qi == -1;
                     bool rs2Ready = !registers[inst.rs2].busy || registers[inst.rs2].Qi == -1;
 
                     if (rs1Ready && rs2Ready) {
                         stations[i].busy = true;
                         stations[i].OP = inst.OP;
-                        stations[i].vj = rs1Ready ? registers[inst.rs1].value : -1;
-                        stations[i].vk = rs2Ready ? registers[inst.rs2].value : -1;
-                        stations[i].qj = rs1Ready ? -1 : registers[inst.rs1].Qi;
-                        stations[i].qk = rs2Ready ? -1 : registers[inst.rs2].Qi;
+                        if (registers[inst.rs1].Qi != -1) {
+                            stations[i].qj = registers[inst.rs1].Qi;
+                        } else {
+                            stations[i].vj = registers[inst.rs1].value;
+                            stations[i].qj = 0;
+                        }
+                        if (registers[inst.rs2].Qi != -1) {
+                            stations[i].qk = registers[inst.rs2].Qi;
+                        } else {
+                            stations[i].vk = registers[inst.rs2].value;
+                            stations[i].qk = 0;
+                        }
                         stations[i].issueTime = currentCycle;
                         stations[i].duration = AddAddiDuration;
                         stations[i].destination_reg = inst.destination_reg;
 
                         registers[inst.destination_reg].busy = true;
-                        registers[inst.destination_reg].Qi = i; // ba set Qi to its index
+                        registers[inst.destination_reg].Qi = i;
 
                         instructionQueue.pop();
-                        break; 
+                        break;
                     }
+                 
                 }
             }
         }
     }
 }
+
 
 
 
