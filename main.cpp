@@ -11,11 +11,10 @@
 using namespace std;
 
 
-void Issuing(int);
-void Execute(int);
+//void Issuing(int);
+//void Execute(int);
 void WriteResult(int);
 void InitializeSystem();
-void LoadInstructions();
 
 
 // Constants
@@ -57,6 +56,8 @@ public:
     int execCompleteCycle = -1;
     int writeCycle = -1;
     int duration = -1;
+    int result=0;
+    int destination_reg = -1;
 
 };
 
@@ -94,11 +95,13 @@ struct Instruction {
     int rs2;
     int offset_imm;
 };
+queue<Instruction> instructionQueue; // queue of instructions
+
 
 struct Register {
     int value;
     bool busy = false;
-    string state = "Free"; // idk how to use this still
+    int Qi=-1;
 };
 
 // Global Variables
@@ -107,151 +110,97 @@ vector<Register> registers(NUM_REGISTERS);
 vector<ReservationStation> Reserves;  // da el station el adeem. kan total. idk law lesa hnhtago
 int memory[MEMORY_SIZE]; //main mem
 
-queue<Instruction> instructionQueue; // queue of instructions
 
 
     
-    void read_and_Print() {
-        ifstream file;
-        string line;
-        string destRegStr;
-        string rs1;
-        string rs2;
+void read_and_Print() {
+    ifstream file;
+    string line;
+    string destination_reg;
+    string rs1;
+    string rs2;
+    string path = "/Users/muhammadabdelmohsen/Desktop/CE Projects/Computer Arch Project/Arch-project2/Tumasulo's.txt";  // Update with the correct file path
+    file.open(path);
 
-        string path = "/Users/muhammadabdelmohsen/Desktop/CE Projects/Computer Arch Project/Arch-project2/Tumasulo's.txt";
-        file.open(path);
+    if (!file.is_open()) {
+        cerr << "Error opening file: " << path << endl;
+        return;
+    } else {
+        while (getline(file, line)) {
+            istringstream reader(line);
+            Instruction inst;
 
-        if (!file.is_open()) {
-            cerr << "Error opening file: " << path << endl;
-            return;
-        } else {
+            reader >> inst.OP.type;
+            reader >> destination_reg;
+            reader >> rs1;
+            reader>>rs2;
             
-            while (getline(file, line)) {
-                istringstream reader(line);
-                Instruction inst;
-
-                reader >> inst.OP.type;
-                reader >> destRegStr;
-                reader >> rs1;
-                reader >> rs2;
-
-                inst.destination_reg = stoi(destRegStr.substr(1)); // tany index mn awl reg
-                inst.rs1 = stoi(rs1.substr(1)); // tany index mn tany reg
-                inst.rs2 = stoi(rs2.substr(1)); // tany index mn talet reg
-
-                instructionQueue.push(inst); // putting the instructions in the queue to use later on
+            // Check if rs2 starts with "R" (indicating it's a register)
+            if (rs2[0] == 'R') {
+                inst.rs2 = stoi(rs2.substr(1));
+            } else {
+                // If it doesn't start with "R," treat it as an immediate value
+                inst.offset_imm = stoi(rs2);
             }
-        }
 
-        // values el registers hena
-        for (int i = 0; i < NUM_REGISTERS; ++i) {
-            cout << "Register R" << i << ": " << registers[i].value << endl;
-        }
+            inst.rs1 = stoi(rs1.substr(1));
+            inst.destination_reg = stoi(destination_reg.substr(1));
 
-        // test el queue gowah eh
-        
-//        cout << "Loaded Instructions:" << endl;
-//        queue<Instruction> tempQueue = instructionQueue; // Copy the queue for printing
-//        while (!tempQueue.empty()) {
-//            Instruction inst = tempQueue.front();
-//            cout << "Instruction: " << inst.OP.type << inst.destination_reg
-//                  << inst.rs1  << inst.rs2 << endl;
-//            tempQueue.pop();
-//        }
+
+            instructionQueue.push(inst);
+            cout << "Pushed Instruction: " << inst.OP.type << ", Queue Size Now: " << instructionQueue.size() << endl;        }
     }
+    cout<<"final size"<<instructionQueue.size()<<endl;
+    // Print register values
+    for (int i = 0; i < NUM_REGISTERS; ++i) {
+        cout << "Register R" << i << ": " << registers[i].value << endl;
+    }
+
+    // Printing from the queue itself
+//    cout << "Instructions in Queue:" << endl;
+//    while (!instructionQueue.empty()) {
+//        Instruction inst = instructionQueue.front();
+//        cout << "Instruction: " << inst.OP.type << " R" << inst.destination_reg << ", R" << inst.rs1 << ", R" << inst.rs2 << endl;
+//        cout<<"Size:" << instructionQueue.size()<<endl;
+//        instructionQueue.pop();
+//
+//    }
+}
+
+
 
 
 
 void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
     if (!instructionQueue.empty()) {
-        Instruction& inst = instructionQueue.front();
-        
-        // i am iterating over every station like addres, nandres, ....
-        if (inst.OP.type == "ADD" || inst.OP.type == "ADDI") {
-            for (auto& station : stationCount.ADDRES) {
-                if (!station.busy) {
-                    station.busy = true;
-                    station.OP = inst.OP;
-                    station.issueTime = currentCycle;
-                    station.duration = AddAddiDuration;
-                    
-                    station.vj = registers[inst.rs1].value;
-                    if (registers[inst.rs1].busy) {
-                        station.qj = inst.rs1;
-                    } else {
-                        station.qj = -1;
+        Instruction inst = instructionQueue.front();
+
+        if (inst.OP.type == "ADD") {
+            auto& stations = stationCount.ADDRES;
+
+            for (int i = 0; i < stations.size(); ++i) {
+                if (!stations[i].busy) {
+                    // Check if the source registers are ready or being written to by another station
+                    bool rs1Ready = !registers[inst.rs1].busy || registers[inst.rs1].Qi == -1;
+                    bool rs2Ready = !registers[inst.rs2].busy || registers[inst.rs2].Qi == -1;
+
+                    if (rs1Ready && rs2Ready) {
+                        stations[i].busy = true;
+                        stations[i].OP = inst.OP;
+                        stations[i].vj = rs1Ready ? registers[inst.rs1].value : -1;
+                        stations[i].vk = rs2Ready ? registers[inst.rs2].value : -1;
+                        stations[i].qj = rs1Ready ? -1 : registers[inst.rs1].Qi;
+                        stations[i].qk = rs2Ready ? -1 : registers[inst.rs2].Qi;
+                        stations[i].issueTime = currentCycle;
+                        stations[i].duration = AddAddiDuration;
+                        stations[i].destination_reg = inst.destination_reg;
+
+                        registers[inst.destination_reg].busy = true;
+                        registers[inst.destination_reg].Qi = i; // ba set Qi to its index
+
+                        instructionQueue.pop();
+                        break; 
                     }
-                    
-                    if (inst.OP.type == "ADD") {
-                        station.vk = registers[inst.rs2].value;
-                        if (registers[inst.rs2].busy) {
-                            station.qk = inst.rs2;
-                        } else {
-                            station.qk = -1;
-                        }
-                    } else {
-                        // For ADDI, vk and qk are not used
-                        station.vk = inst.offset_imm;
-                        station.qk = -1;
-                    }
-                    
-                    instructionQueue.pop();
-                    break;
-                    
-                }
-            }
-        }
-        
-        else if (inst.OP.type == "NAND") {
-            for (auto& station : stationCount.NANDRES) {
-                if (!station.busy) {
-                    station.busy = true;
-                    station.OP = inst.OP;
-                    station.issueTime = currentCycle;
-                    station.duration = nandDuration;
-                    
-                    station.vj = registers[inst.rs1].value;
-                    if (registers[inst.rs1].busy) {
-                        station.qj = inst.rs1;
-                    } else {
-                        station.qj = -1;
-                    }
-                    
-                    station.vk = registers[inst.rs2].value;
-                    if (registers[inst.rs2].busy) {
-                        station.qk = inst.rs2;
-                    } else {
-                        station.qk = -1;
-                    }
-                    
-                    instructionQueue.pop();
-                    break;
-                }
-            }
-        } else if (inst.OP.type == "DIV") {
-            for (auto& station : stationCount.DIVRES) {
-                if (!station.busy) {
-                    station.busy = true;
-                    station.OP = inst.OP;
-                    station.issueTime = currentCycle;
-                    station.duration = DIVDuration;
-                    
-                    station.vj = registers[inst.rs1].value;
-                    if (registers[inst.rs1].busy) {
-                        station.qj = inst.rs1;
-                    } else {
-                        station.qj = -1;
-                    }
-                    
-                    station.vk = registers[inst.rs2].value;
-                    if (registers[inst.rs2].busy) {
-                        station.qk = inst.rs2;
-                    } else {
-                        station.qk = -1;
-                    }
-                    
-                    instructionQueue.pop();
-                    break;
                 }
             }
         }
@@ -260,33 +209,36 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
 
 
 
-void Execute(int currentCycle) {
-    for (auto& station : Reserves) {
-        if (station.busy && station.issueTime != -1 && station.execCompleteCycle == -1)
-        {
+void Execute(int currentCycle, ReservationStationsCount& stationCount) {
+
+    for (auto& station : stationCount.ADDRES) {
+        if (station.busy && station.issueTime != -1 && station.execCompleteCycle == -1) {
             if (station.execStartCycle == -1) {
-                // Check if ready
-                if ((station.qj == -1 || !registers[station.qj].busy) && (station.qk == -1 || !registers[station.qk].busy))
-                {
+                if ((station.qj == -1 || !registers[station.qj].busy) && (station.qk == -1 || !registers[station.qk].busy)) {
                     station.execStartCycle = currentCycle;
+                    // Perform the ADD operation
+                    station.result = registers[station.vj].value + registers[station.vk].value;  // Assuming result field exists
                 }
             }
 
-            if (currentCycle - station.execStartCycle == station.duration) {
+            if (currentCycle - station.execStartCycle >= station.duration) {
                 station.execCompleteCycle = currentCycle;
             }
         }
     }
 }
 
-
-void WriteResult(int currentCycle) {
-    for (auto& station : Reserves) {
+void WriteResult(int currentCycle, ReservationStationsCount& stationCount) {
+    for (auto& station : stationCount.ADDRES) {
         if (station.busy && station.execCompleteCycle != -1 && station.writeCycle == -1) {
+            // Writing the result back to the register file
+            registers[station.destination_reg].value = station.result;  // Assuming destination_reg field exists
             station.writeCycle = currentCycle;
+            station.busy = false; // Freeing up the reservation station
         }
     }
 }
+
 
 
 void InitializeRegs() {
@@ -296,6 +248,9 @@ void InitializeRegs() {
     }
     registers[0].value=0;
     registers[0].busy=true; // 3ashan mesh 3ayzo Yetghayar
+    
+    registers[2].value = 10; // Example value for R2
+    registers[3].value = 20; // Example value for R3
  
 }
 
@@ -304,37 +259,40 @@ void LoadInstructions() {
 }
 
 
-int main() {
-    int currentCycle = 0;
-    int totalCycles = 100;
 
+int main() {
     InitializeRegs();// initialize regs b zeros
+    int currentCycle = 0;
+    int totalCycles = 50;
+    read_and_Print();
+
     ReservationStationsCount stationCount;
     
     
 // test count el stations
-    cout << "ADD stations: " << stationCount.ADDRES.size() << endl;
-    cout << "LOAD stations: " << stationCount.LOADRES.size() << endl;
-    cout << "STORE stations: " << stationCount.STORERES.size() << endl;
-    cout << "ADDI stations: " << stationCount.ADDIRES.size() << endl;
-    cout << "RET stations: " << stationCount.RETRES.size() << endl;
-    cout << "CALL stations: " << stationCount.CALLRES.size() << endl;
-    cout << "DIV stations: " << stationCount.DIVRES.size() << endl;
-    cout << "BNE stations: " << stationCount.ADDRES.size() << endl;
-    cout << "NAND stations: " << stationCount.ADDRES.size() << endl;
+//    cout << "ADD stations: " << stationCount.ADDRES.size() << endl;
+//    cout << "LOAD stations: " << stationCount.LOADRES.size() << endl;
+//    cout << "STORE stations: " << stationCount.STORERES.size() << endl;
+//    cout << "ADDI stations: " << stationCount.ADDIRES.size() << endl;
+//    cout << "RET stations: " << stationCount.RETRES.size() << endl;
+//    cout << "CALL stations: " << stationCount.CALLRES.size() << endl;
+//    cout << "DIV stations: " << stationCount.DIVRES.size() << endl;
+//    cout << "BNE stations: " << stationCount.ADDRES.size() << endl;
+//    cout << "NAND stations: " << stationCount.ADDRES.size() << endl;
 
+//    cout << "Current Cycle: " << currentCycle << ", Queue Size: " << instructionQueue.size() << endl;
+    cout << "Queue Size after read_and_Print: " << instructionQueue.size() << endl; // Check the size
 
-    do {
-        Issuing(currentCycle, stationCount);
-        Execute(currentCycle);
-        WriteResult(currentCycle);
-        currentCycle++;
-    }
-    while ((currentCycle < totalCycles));
-    
-    read_and_Print();
-    
+      
+       while (currentCycle < totalCycles) {
+           if (!instructionQueue.empty()) {
+               Issuing(currentCycle, stationCount);
+               Execute(currentCycle, stationCount);
+               WriteResult(currentCycle, stationCount);
+           }
+           currentCycle++;
+       }
+
     return 0;
 }
-
 
