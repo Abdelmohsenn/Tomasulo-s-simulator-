@@ -220,20 +220,37 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
 void Execute(int currentCycle, ReservationStationsCount& stationCount) {
 
     for (auto& station : stationCount.ADDRES) {
-
+        // Ensure that the station is busy, an ADD instruction has been issued, and it has not yet executed
         if (station.busy && station.OP.type == "ADD" && station.issueTime != -1 && station.execCompleteCycle == -1) {
 
             if (station.qj == 0 && station.qk == 0) {
                 station.result = station.vj + station.vk;
                 station.execCompleteCycle = currentCycle; // Mark the cycle the execution completes
             }
-            cout<<"Result"<<station.result<<endl;;
+//            cout<<"Result"<<station.result<<endl;;
         }
     }
 }
 
 void WriteResult(int currentCycle, ReservationStationsCount& stationCount) {
-   
+    
+    for (auto& station : stationCount.ADDRES) {
+        if (station.OP.type == "ADD" && station.busy && station.execCompleteCycle != -1 && station.writeCycle == -1) {
+            // Check if the destination register's Qi matches the index of the station
+            
+            if (registers[station.destination_reg].Qi == (&station - &stationCount.ADDRES[0])) {
+
+                registers[station.destination_reg].value = station.result;
+                registers[station.destination_reg].Qi = -1; // Clear the Qi for the register
+            }
+            
+            
+            
+        }
+//        cout<<"Result:"<<registers[station.destination_reg].value<<endl;
+
+    }
+    
 }
 
 
