@@ -166,6 +166,7 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
     if (!instructionQueue.empty()) {
         Instruction& inst = instructionQueue.front();
         
+        // i am iterating over every station like addres, nandres, ....
         if (inst.OP.type == "ADD" || inst.OP.type == "ADDI") {
             for (auto& station : stationCount.ADDRES) {
                 if (!station.busy) {
