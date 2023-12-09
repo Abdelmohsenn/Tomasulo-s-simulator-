@@ -148,14 +148,9 @@ void read_and_Print() {
 
 
             instructionQueue.push(inst);
-            cout << "Pushed Instruction: " << inst.OP.type << ", Queue Size Now: " << instructionQueue.size() << endl;        }
+//            cout << "Pushed Instruction: " << inst.OP.type << ", Queue Size Now: " << instructionQueue.size() << endl;     
+        }
     }
-    cout<<"final size"<<instructionQueue.size()<<endl;
-    // Print register values
-    for (int i = 0; i < NUM_REGISTERS; ++i) {
-        cout << "Register R" << i << ": " << registers[i].value << endl;
-    }
-
     // Printing from the queue itself
 //    cout << "Instructions in Queue:" << endl;
 //    while (!instructionQueue.empty()) {
@@ -192,6 +187,7 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
                             stations[i].vj = registers[inst.rs1].value;
                             stations[i].qj = 0;
                         }
+                        cout<<stations[i].OP.type;
                         if (registers[inst.rs2].Qi != -1) {
                             stations[i].qk = registers[inst.rs2].Qi;
                         } else {
@@ -209,6 +205,9 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
                         break;
                     }
                  
+                } else{
+                    
+                    return;
                 }
             }
         }
@@ -221,32 +220,22 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
 void Execute(int currentCycle, ReservationStationsCount& stationCount) {
 
     for (auto& station : stationCount.ADDRES) {
-        if (station.busy && station.issueTime != -1 && station.execCompleteCycle == -1) {
-            if (station.execStartCycle == -1) {
-                if ((station.qj == -1 || !registers[station.qj].busy) && (station.qk == -1 || !registers[station.qk].busy)) {
-                    station.execStartCycle = currentCycle;
-                    // Perform the ADD operation
-                    station.result = registers[station.vj].value + registers[station.vk].value;  // Assuming result field exists
-                }
-            }
 
-            if (currentCycle - station.execStartCycle >= station.duration) {
-                station.execCompleteCycle = currentCycle;
+        if (station.busy && station.OP.type == "ADD" && station.issueTime != -1 && station.execCompleteCycle == -1) {
+
+            if (station.qj == 0 && station.qk == 0) {
+                station.result = station.vj + station.vk;
+                station.execCompleteCycle = currentCycle; // Mark the cycle the execution completes
             }
+            cout<<"Result"<<station.result<<endl;;
         }
     }
 }
 
 void WriteResult(int currentCycle, ReservationStationsCount& stationCount) {
-    for (auto& station : stationCount.ADDRES) {
-        if (station.busy && station.execCompleteCycle != -1 && station.writeCycle == -1) {
-            // Writing the result back to the register file
-            registers[station.destination_reg].value = station.result;  // Assuming destination_reg field exists
-            station.writeCycle = currentCycle;
-            station.busy = false; // Freeing up the reservation station
-        }
-    }
+   
 }
+
 
 
 
@@ -254,6 +243,8 @@ void InitializeRegs() {
     for (int i = 0; i < NUM_REGISTERS; ++i) {
         registers[i].value = 0;
         registers[i].busy = false;
+        registers[i].Qi = -1;
+
     }
     registers[0].value=0;
     registers[0].busy=true; // 3ashan mesh 3ayzo Yetghayar
@@ -268,6 +259,12 @@ void LoadInstructions() {
 }
 
 
+void PrintResults() {
+    cout << "Final Register Values:" << endl;
+    for (int i = 0; i < NUM_REGISTERS; ++i) {
+        cout << "Register R" << i << ": " << registers[i].value << endl;
+    }
+}
 
 int main() {
     InitializeRegs();// initialize regs b zeros
@@ -301,7 +298,7 @@ int main() {
            }
            currentCycle++;
        }
-
+    PrintResults();
     return 0;
 }
 
