@@ -162,55 +162,102 @@ queue<Instruction> instructionQueue; // queue of instructions
 
 
 
-
-void Issuing(int currentCycle) {
+void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
     if (!instructionQueue.empty()) {
         Instruction& inst = instructionQueue.front();
-        ReservationStationsCount stationCount;
         
-        // Check the instruction type and use the corresponding reservation stations
-        if (inst.OP.type == "ADD") {
+        if (inst.OP.type == "ADD" || inst.OP.type == "ADDI") {
             for (auto& station : stationCount.ADDRES) {
                 if (!station.busy) {
-                    // Check other conditions for ADD and ADDI operations
                     station.busy = true;
                     station.OP = inst.OP;
                     station.issueTime = currentCycle;
-                    station.duration =  AddAddiDuration;
+                    station.duration = AddAddiDuration;
+                    
+                    station.vj = registers[inst.rs1].value;
+                    if (registers[inst.rs1].busy) {
+                        station.qj = inst.rs1;
+                    } else {
+                        station.qj = -1;
+                    }
+                    
+                    if (inst.OP.type == "ADD") {
+                        station.vk = registers[inst.rs2].value;
+                        if (registers[inst.rs2].busy) {
+                            station.qk = inst.rs2;
+                        } else {
+                            station.qk = -1;
+                        }
+                    } else {
+                        // For ADDI, vk and qk are not used
+                        station.vk = inst.offset_imm;
+                        station.qk = -1;
+                    }
+                    
                     instructionQueue.pop();
                     break;
+                    
                 }
             }
         }
-        else if (inst.OP.type  == "ADDI") {
-            for (auto& station : stationCount.ADDRES) {
+        
+        else if (inst.OP.type == "NAND") {
+            for (auto& station : stationCount.NANDRES) {
                 if (!station.busy) {
-                    // Check other conditions for ADD and ADDI operations
                     station.busy = true;
                     station.OP = inst.OP;
                     station.issueTime = currentCycle;
-                    station.duration =  AddAddiDuration;
+                    station.duration = nandDuration;
+                    
+                    station.vj = registers[inst.rs1].value;
+                    if (registers[inst.rs1].busy) {
+                        station.qj = inst.rs1;
+                    } else {
+                        station.qj = -1;
+                    }
+                    
+                    station.vk = registers[inst.rs2].value;
+                    if (registers[inst.rs2].busy) {
+                        station.qk = inst.rs2;
+                    } else {
+                        station.qk = -1;
+                    }
+                    
                     instructionQueue.pop();
                     break;
                 }
             }
-        }
-        else if (inst.OP.type == "LOAD") {
-            for (auto& station : stationCount.LOADRES) {
+        } else if (inst.OP.type == "DIV") {
+            for (auto& station : stationCount.DIVRES) {
                 if (!station.busy) {
-                    // Check other conditions for LOAD operations
                     station.busy = true;
                     station.OP = inst.OP;
                     station.issueTime = currentCycle;
-                    station.duration = loadDur;
+                    station.duration = DIVDuration;
+                    
+                    station.vj = registers[inst.rs1].value;
+                    if (registers[inst.rs1].busy) {
+                        station.qj = inst.rs1;
+                    } else {
+                        station.qj = -1;
+                    }
+                    
+                    station.vk = registers[inst.rs2].value;
+                    if (registers[inst.rs2].busy) {
+                        station.qk = inst.rs2;
+                    } else {
+                        station.qk = -1;
+                    }
+                    
                     instructionQueue.pop();
                     break;
                 }
             }
-            
         }
     }
 }
+
+
 
 void Execute(int currentCycle) {
     for (auto& station : Reserves) {
@@ -277,7 +324,7 @@ int main() {
 
 
     do {
-        Issuing(currentCycle);
+        Issuing(currentCycle, stationCount);
         Execute(currentCycle);
         WriteResult(currentCycle);
         currentCycle++;
