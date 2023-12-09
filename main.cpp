@@ -187,7 +187,7 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
                             stations[i].vj = registers[inst.rs1].value;
                             stations[i].qj = 0;
                         }
-                        cout<<stations[i].OP.type;
+                        cout << stations[i].OP.type;
                         if (registers[inst.rs2].Qi != -1) {
                             stations[i].qk = registers[inst.rs2].Qi;
                         } else {
@@ -204,12 +204,10 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
                         instructionQueue.pop();
                         break;
                     }
-                 
-                } else{
-                    
-                    return;
                 }
             }
+        } else {
+            // Handle other instruction types if needed
         }
     }
 }
