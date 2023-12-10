@@ -277,12 +277,12 @@ void Execute(int& currentCycle, ReservationStationsCount& stationCount) {
         if (station.busy && station.OP.type == "ADD" && station.issueTime != -1 && station.execCompleteCycle == -1) {
 
             if (station.qj == 0 && station.qk == 0) {
-                
+                station.result = station.vj + station.vk;
+
                 station.execStartCycle= station.issueTime+1;
                 station.execCompleteCycle =station.execStartCycle + AddAddiDuration;
                 
                 
-                currentCycle=station.execCompleteCycle;
 //                cout<<"current cycle = >"<<currentCycle;
             }
 //            cout<<" issue time hena "<<station.issueTime<<endl;
@@ -299,7 +299,6 @@ void Execute(int& currentCycle, ReservationStationsCount& stationCount) {
                 
 
                 
-                currentCycle=station.execCompleteCycle; // updating the currentcycle
 //                station.cur
 //                cout<< "current cycle = >" << currentCycle;
             }
@@ -321,7 +320,7 @@ void WriteResult(int& currentCycle, ReservationStationsCount& stationCount) {
                 registers[station.destination_reg].value = station.result;
                 registers[station.destination_reg].Qi = -1;
                 station.writeCycle=station.execCompleteCycle+1;
-                currentCycle=station.writeCycle;
+//                currentCycle=station.writeCycle;
                 
 //    cout<<"Current Cycle in the write result = >"<<currentCycle<<endl;
             }
@@ -333,7 +332,7 @@ void WriteResult(int& currentCycle, ReservationStationsCount& stationCount) {
                 registers[station.destination_reg].value = station.result;
                 registers[station.destination_reg].Qi = -1;
                 station.writeCycle=station.execCompleteCycle+1;
-                currentCycle=station.writeCycle;
+//                currentCycle=station.writeCycle;
                 
     //  cout<<"Current Cycle in the write result = >"<<currentCycle<<endl;
 
@@ -377,35 +376,37 @@ void PrintResults() {
     }
 }
 
+
+
 int main() {
-    InitializeRegs();// initialize regs b zeros
-    int currentCycle = 0;
-    int totalCycles = 50;
+    InitializeRegs();
     read_and_Print();
 
     ReservationStationsCount stationCount;
-    
-    
-// test count el stations
-//    cout << "ADD stations: " << stationCount.ADDRES.size() << endl;
-//    cout << "LOAD stations: " << stationCount.LOADRES.size() << endl;
-//    cout << "STORE stations: " << stationCount.STORERES.size() << endl;
-//    cout << "RET stations: " << stationCount.RETRES.size() << endl;
-//    cout << "CALL stations: " << stationCount.CALLRES.size() << endl;
-//    cout << "DIV stations: " << stationCount.DIVRES.size() << endl;
-//    cout << "BNE stations: " << stationCount.ADDRES.size() << endl;
-//    cout << "NAND stations: " << stationCount.ADDRES.size() << endl;
+    int currentCycle = 0;
+    int totalCycles = 50;
 
-//    cout << "Current Cycle: " << currentCycle << ", Queue Size: " << instructionQueue.size() << endl;
-    cout << "Queue Size after read_and_Print: " << instructionQueue.size() << endl; // Check the size
+    while (currentCycle < totalCycles) {
+        if (!instructionQueue.empty()) {
+            Issuing(currentCycle, stationCount);
+        }
+        Execute(currentCycle, stationCount);
+        WriteResult(currentCycle, stationCount);
+        currentCycle++; // Increment the cycle at the end of each loop iteration
+    }
+    // test count el stations
+    //    cout << "ADD stations: " << stationCount.ADDRES.size() << endl;
+    //    cout << "LOAD stations: " << stationCount.LOADRES.size() << endl;
+    //    cout << "STORE stations: " << stationCount.STORERES.size() << endl;
+    //    cout << "RET stations: " << stationCount.RETRES.size() << endl;
+    //    cout << "CALL stations: " << stationCount.CALLRES.size() << endl;
+    //    cout << "DIV stations: " << stationCount.DIVRES.size() << endl;
+    //    cout << "BNE stations: " << stationCount.ADDRES.size() << endl;
+    //    cout << "NAND stations: " << stationCount.ADDRES.size() << endl;
 
-      
-               Issuing(currentCycle, stationCount);
-               Execute(currentCycle, stationCount);
-               WriteResult(currentCycle, stationCount);
-          
-    cout<<" Current Cycle = > " <<currentCycle<<endl;
+    //    cout << "Current Cycle: " << currentCycle << ", Queue Size: " << instructionQueue.size() << endl;
+
+    cout << "Current Cycle at the end: " << currentCycle << endl;
     PrintResults();
     return 0;
 }
-
