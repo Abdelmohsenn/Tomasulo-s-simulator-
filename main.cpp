@@ -150,6 +150,7 @@ void read_and_Print() {
         }
     }
     // Printing from the queue itself
+    
 //    cout << "Instructions in Queue:" << endl;
 //    while (!instructionQueue.empty()) {
 //        Instruction inst = instructionQueue.front();
@@ -167,23 +168,22 @@ void read_and_Print() {
 void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
     if (!instructionQueue.empty()) {
         Instruction inst = instructionQueue.front();
-
+        
         if (inst.OP.type == "ADD" || inst.OP.type == "ADDI") {
             auto& stations = stationCount.ADDRES;
-
             for (int i = 0; i < stations.size(); ++i) {
                 if (!stations[i].busy) {
                     bool rs1Ready = !registers[inst.rs1].busy || registers[inst.rs1].Qi == -1;
                     bool rs2Ready = true;
-
-                    if (inst.OP.type == "ADD" && registers[inst.rs2].Qi != -1) {
+                    
+                    if ((inst.OP.type == "ADD" && registers[inst.rs2].Qi != -1) || (inst.OP.type == "ADD" && registers[inst.rs2].busy)){
                         rs2Ready = false;
                     }
-
+                    
                     if (inst.OP.type == "ADDI") {
                         rs2Ready = true;  // Immediate value is always ready
                     }
-
+                    
                     if (rs1Ready && rs2Ready) {
                         stations[i].busy = true;
                         stations[i].OP = inst.OP;
@@ -193,7 +193,7 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
                             stations[i].vj = registers[inst.rs1].value;
                             stations[i].qj = 0;
                         }
-
+                        
                         if (inst.OP.type == "ADD") {
                             if (registers[inst.rs2].Qi != -1) {
                                 stations[i].qk = registers[inst.rs2].Qi;
@@ -205,22 +205,66 @@ void Issuing(int currentCycle, ReservationStationsCount& stationCount) {
                             stations[i].vk = inst.offset_imm;
                             stations[i].qk = 0;  // Immediate value is always ready
                         }
-
+                        
                         stations[i].issueTime = currentCycle;
                         stations[i].duration = AddAddiDuration;
                         stations[i].destination_reg = inst.destination_reg;
-
+                        
                         registers[inst.destination_reg].busy = true;
                         registers[inst.destination_reg].Qi = i;
-
+                        
+                        //                        cout<<"Cycles taken in the issuing"<<stations[i].duration;
+                        
                         instructionQueue.pop();
                         break;
                     }
+                    
+                }
+            }
+        }
+        
+        if (inst.OP.type == "LOAD") {
+            auto& stations = stationCount.LOADRES;
+            for (int i = 0; i < stations.size(); ++i) {
+                if (!stations[i].busy) {
+                    bool rs1Ready = !registers[inst.rs1].busy || registers[inst.rs1].Qi == -1;
+                    //                    bool rs2Ready = true;
+                    
+                    
+                    
+                    if (rs1Ready) {
+                        stations[i].busy = true;
+                        stations[i].OP = inst.OP;
+                        if (registers[inst.rs1].Qi != -1) {
+                            stations[i].qj = registers[inst.rs1].Qi;
+                        } else {
+                            stations[i].vj = registers[inst.rs1].value;
+                            stations[i].qj = 0;
+                        }
+                        
+                        stations[i].vk = inst.offset_imm;
+                        stations[i].qk = 0;  // Immediate value is always ready
+                        
+                        stations[i].issueTime = currentCycle;
+                        stations[i].duration = loadDur;
+                        stations[i].destination_reg = inst.destination_reg;
+                        
+                        registers[inst.destination_reg].busy = true;
+                        registers[inst.destination_reg].Qi = i;
+                        
+//                        cout<< "Immediate value =>> "<< stations[i].vk <<endl;
+//                        cout<< "Rd  =>> "<< stations[i].vj <<endl;
+//                        cout <<"this instruction durtion = >>" <<loadDur<<endl;
+                        instructionQueue.pop();
+                        break;
+                    }
+                    
                 }
             }
         }
     }
 }
+
 
 
 
@@ -236,14 +280,27 @@ void Execute(int currentCycle, ReservationStationsCount& stationCount) {
                 station.result = station.vj + station.vk;
                 station.execCompleteCycle = currentCycle; // Mark the cycle the execution completes
             }
+            cout<<"eh hena"<<station.issueTime<<endl;
+
 //            cout<<"Result"<<station.result<<endl;;
         }
         else if (station.busy && station.OP.type == "ADDI" && station.issueTime != -1 && station.execCompleteCycle == -1) {
             if (station.qj == 0 && station.qk == 0) {
                 station.result = station.vj + station.vk;
+                
+                // computing el cycle
+                station.execStartCycle= station.issueTime+1;
+                station.execCompleteCycle =station.execStartCycle + AddAddiDuration;
+                
                 station.execCompleteCycle = currentCycle; // Mark the cycle the execution completes
+//                station.cur
+
             }
 //            cout<<"Result"<<station.result<<endl;;
+//            cout<<"exec cycles hena"<<station.execCompleteCycle<<endl;
+//            cout<<"curr cycles hena"<<currentCycle<<endl;
+            
+            
         }
     }
 }
@@ -265,7 +322,11 @@ void WriteResult(int currentCycle, ReservationStationsCount& stationCount) {
                 registers[station.destination_reg].Qi = -1;
             }
         }
+        
     }
+    
+    
+//    cout<<"curr cycles hena"<<currentCycle<<endl;
 }
 
 
@@ -312,7 +373,6 @@ int main() {
 //    cout << "ADD stations: " << stationCount.ADDRES.size() << endl;
 //    cout << "LOAD stations: " << stationCount.LOADRES.size() << endl;
 //    cout << "STORE stations: " << stationCount.STORERES.size() << endl;
-//    cout << "ADDI stations: " << stationCount.ADDIRES.size() << endl;
 //    cout << "RET stations: " << stationCount.RETRES.size() << endl;
 //    cout << "CALL stations: " << stationCount.CALLRES.size() << endl;
 //    cout << "DIV stations: " << stationCount.DIVRES.size() << endl;
