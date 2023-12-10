@@ -292,7 +292,7 @@ void Execute(int currentCycle, ReservationStationsCount& stationCount) {
                 station.execStartCycle= station.issueTime+1;
                 station.execCompleteCycle =station.execStartCycle + AddAddiDuration;
                 
-                station.execCompleteCycle = currentCycle; // Mark the cycle the execution completes
+                currentCycle=station.execCompleteCycle; // updating the cycle
 //                station.cur
 
             }
