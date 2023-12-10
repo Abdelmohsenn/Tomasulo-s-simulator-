@@ -277,8 +277,13 @@ void Execute(int currentCycle, ReservationStationsCount& stationCount) {
         if (station.busy && station.OP.type == "ADD" && station.issueTime != -1 && station.execCompleteCycle == -1) {
 
             if (station.qj == 0 && station.qk == 0) {
-                station.result = station.vj + station.vk;
-                station.execCompleteCycle = currentCycle; // Mark the cycle the execution completes
+                
+                station.execStartCycle= station.issueTime+1;
+                station.execCompleteCycle =station.execStartCycle + AddAddiDuration;
+                
+                
+                currentCycle=station.execCompleteCycle;
+//                cout<<"current cycle = >"<<currentCycle;
             }
             cout<<"eh hena"<<station.issueTime<<endl;
 
@@ -292,7 +297,9 @@ void Execute(int currentCycle, ReservationStationsCount& stationCount) {
                 station.execStartCycle= station.issueTime+1;
                 station.execCompleteCycle =station.execStartCycle + AddAddiDuration;
                 
-                currentCycle=station.execCompleteCycle; // updating the cycle
+
+                
+                currentCycle=station.execCompleteCycle; // updating the currentcycle
 //                station.cur
 
             }
