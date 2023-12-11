@@ -13,7 +13,7 @@ using namespace std;
 
 //void Issuing(int);
 //void Execute(int);
-void WriteResult(int);
+//void WriteResult(int);
 void InitializeSystem();
 
 
@@ -30,6 +30,7 @@ const int AddAddiDuration = 2;
 const int CallDuration = 1;
 const int nandDuration = 1;
 const int DIVDuration = 10;
+bool addwritten=false;
 
 // for tracking
 int totalInstructions = 0;
@@ -146,7 +147,7 @@ void read_and_Print() {
 
 
             instructionQueue.push(inst);
-//            cout << "Pushed Instruction: " << inst.OP.type << ", Queue Size Now: " << instructionQueue.size() << endl;     
+//            cout << "Pushed Instruction: " << inst.OP.type << ", Queue Size Now: " << instructionQueue.size() << endl;
         }
     }
     // Printing from the queue itself
@@ -165,13 +166,14 @@ void read_and_Print() {
 
 
 
-void Issuing(int& currentCycle, ReservationStationsCount& stationCount) {
+void Issuing(int& currentCycle, ReservationStationsCount& stationCount, int *size) {
     if (!instructionQueue.empty()) {
         Instruction inst = instructionQueue.front();
-        
+    
         if (inst.OP.type == "ADD" || inst.OP.type == "ADDI") {
             auto& stations = stationCount.ADDRES;
-            for (int i = 0; i < stations.size(); ++i) {
+            *size = stations.size();
+            for (int i = 0; i < *size; i++) {
                 if (!stations[i].busy) {
                     bool rs1Ready = !registers[inst.rs1].busy || registers[inst.rs1].Qi == -1;
                     bool rs2Ready = true;
@@ -214,7 +216,9 @@ void Issuing(int& currentCycle, ReservationStationsCount& stationCount) {
                         registers[inst.destination_reg].Qi = i;
                         
                         //                        cout<<"Cycles taken in the issuing"<<stations[i].duration;
-                        
+//                        cout<<*size<<endl;
+                        *size = *size +1;
+//                        cout<<*size<<endl;
                         instructionQueue.pop();
                         break;
                     }
@@ -270,7 +274,7 @@ void Issuing(int& currentCycle, ReservationStationsCount& stationCount) {
 
 
 
-void Execute(int& currentCycle, ReservationStationsCount& stationCount) {
+void Execute(int& currentCycle, ReservationStationsCount& stationCount, int *size) {
 
     for (auto& station : stationCount.ADDRES) {
         // Ensure that the station is busy, an ADD instruction has been issued, and it has not yet executed
@@ -281,7 +285,9 @@ void Execute(int& currentCycle, ReservationStationsCount& stationCount) {
 
                 station.execStartCycle= station.issueTime+1;
                 station.execCompleteCycle =station.execStartCycle + AddAddiDuration;
-                
+                *size = *size - 1;
+                            station.busy=false;
+
                 
 //                cout<<"current cycle = >"<<currentCycle;
             }
@@ -296,7 +302,8 @@ void Execute(int& currentCycle, ReservationStationsCount& stationCount) {
                 // computing el cycle
                 station.execStartCycle= station.issueTime+1;
                 station.execCompleteCycle =station.execStartCycle + AddAddiDuration;
-                
+                *size = *size - 1;
+
 
                 
 //                station.cur
@@ -311,7 +318,7 @@ void Execute(int& currentCycle, ReservationStationsCount& stationCount) {
     }
 }
 
-void WriteResult(int& currentCycle, ReservationStationsCount& stationCount) {
+void WriteResult(int& currentCycle, ReservationStationsCount& stationCount,int* size) {
     
     for (auto& station : stationCount.ADDRES) {
         if (station.OP.type == "ADD" && station.busy && station.execCompleteCycle != -1 && station.writeCycle == -1) {
@@ -321,6 +328,9 @@ void WriteResult(int& currentCycle, ReservationStationsCount& stationCount) {
                 registers[station.destination_reg].Qi = -1;
                 station.writeCycle=station.execCompleteCycle+1;
 //                currentCycle=station.writeCycle;
+//                station.busy=false;
+                addwritten=true;
+//                *size=*size-1;
                 
 //    cout<<"Current Cycle in the write result = >"<<currentCycle<<endl;
             }
@@ -332,6 +342,7 @@ void WriteResult(int& currentCycle, ReservationStationsCount& stationCount) {
                 registers[station.destination_reg].value = station.result;
                 registers[station.destination_reg].Qi = -1;
                 station.writeCycle=station.execCompleteCycle+1;
+
 //                currentCycle=station.writeCycle;
                 
     //  cout<<"Current Cycle in the write result = >"<<currentCycle<<endl;
@@ -381,6 +392,7 @@ void PrintResults() {
 int main() {
     InitializeRegs();
     read_and_Print();
+    int size=0;
 
     ReservationStationsCount stationCount;
     int currentCycle = 0;
@@ -388,10 +400,15 @@ int main() {
 
     while (currentCycle < totalCycles) {
         if (!instructionQueue.empty()) {
-            Issuing(currentCycle, stationCount);
+            cout<<instructionQueue.front().OP.type<< " "<<instructionQueue.front().destination_reg <<endl;
+            Issuing(currentCycle, stationCount, &size);
+//            cout<<instructionQueue.front().OP.type<< " "<<instructionQueue.front().destination_reg <<endl;
+//            instructionQueue.pop();
+
         }
-        Execute(currentCycle, stationCount);
-        WriteResult(currentCycle, stationCount);
+        Execute(currentCycle, stationCount, &size);
+        WriteResult(currentCycle, stationCount, &size);
+        size = 0;
         currentCycle++; // Increment the cycle at the end of each loop iteration
     }
     // test count el stations
