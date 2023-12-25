@@ -29,7 +29,7 @@ struct instruction{ //an instruction that saves inside it the registers used and
     int rd = 0; int r1 = 0; int r2 = 0;
     bool offset_r2 = false; bool load_store = false;
     int address = 0; string label;
-
+    
     //--------------------------------- all the above are instruction properties we will need for the execution of the program
     // what is to come might be variables we need for the execution stage
     int execCycles; //this is a variable based on the instruction that determines how many cycles it will need inside the execution stage
@@ -50,7 +50,7 @@ void readFile(string text, vector<instruction>& program, unordered_map<string, i
     file.open(text);
     vector<vector<string>> words; //this is used to break down each line into words
     vector<string> lines; //this is used to store the words in these lines
-
+    
     if (file.is_open()) {                                                              //checking to see if I accessed the file or not to begin with
         cout << "Successfully accessed the Instruction Program" << endl;
     }
@@ -64,7 +64,7 @@ void readFile(string text, vector<instruction>& program, unordered_map<string, i
         getline(file, line);
         to_read.push_back(line);
     }
-
+    
     for(auto line : to_read){
         string word = "";
         for (auto x : line) //this loop is to collect each word letter by letter to put seperated words as lines in vector words
@@ -82,7 +82,7 @@ void readFile(string text, vector<instruction>& program, unordered_map<string, i
         words.push_back(lines);
         lines.clear();//clear the array of all words
     }
-
+    
     for(int i = 0; i < words.size(); i++){
         instruction instance;
         instance.fullInst = to_read[i];
@@ -127,7 +127,7 @@ void readFile(string text, vector<instruction>& program, unordered_map<string, i
         }else if(words[i][0] == "CALL"){
             instance.op = words[i][0];
             instance.label = words[i][1];
-
+            
         }else if(words[i][0].back() == ':'){
             words[i][0].pop_back();
             labels[words[i][0]] = i;
@@ -136,7 +136,7 @@ void readFile(string text, vector<instruction>& program, unordered_map<string, i
         else {cout << "UNRECOGNIZED INSTRUCTION" << endl;
             return;
         }
-
+        
         if(!labelfound) program.push_back(instance);
     }
 };
@@ -147,7 +147,7 @@ void readMemory(string text){
     file.open(text);
     vector<vector<string>> words; //this is used to break down each line into words
     vector<string> lines; //this is used to store the words in these lines
-
+    
     if (file.is_open()) {                                                              //checking to see if I accessed the file or not to begin with
         cout << "Successfully accessed the Memory" << endl;
     }
@@ -161,7 +161,7 @@ void readMemory(string text){
         getline(file, line);
         to_read.push_back(line);
     }
-
+    
     for(auto line : to_read){
         string word = "";
         for (auto x : line) //this loop is to collect each word letter by letter to put seperated words as lines in vector words
@@ -179,18 +179,18 @@ void readMemory(string text){
         words.push_back(lines);
         lines.clear();//clear the array of all words
     }
-
+    
     for(int i = 0; i < 64000; i++){
         memory[i] = 0;
     }
-
+    
     for(int i = 0; i  < words.size(); i++){
         int index;
         index = stoi(words[i][0]);
         memory[index] = stoi(words[i][1]);
     }
-
-
+    
+    
 }
 
 void setCycles(vector<instruction>& program){ //this is another function we use to prepare the program for execution
@@ -260,7 +260,7 @@ void updateUnits(int res, int unit){ //updates the units' operands waiting for a
             DIV[i].Qk = 0; DIV[i].Vk = res;
         }
     }
-
+    
     for(int i = 0; i < NAND.size(); i++){
         if(NAND[i].Qj == unit){
             NAND[i].Qj = 0; NAND[i].Vj = res;
@@ -269,7 +269,7 @@ void updateUnits(int res, int unit){ //updates the units' operands waiting for a
             NAND[i].Qk = 0; NAND[i].Vk = res;
         }
     }
-
+    
     for(int i = 0; i < LOADERS.size(); i++){
         if(LOADERS[i].Qj == unit){
             LOADERS[i].Qj = 0; LOADERS[i].Vj = res;
@@ -286,10 +286,10 @@ void updateUnits(int res, int unit){ //updates the units' operands waiting for a
             STORES[i].Qk = 0; STORES[i].Vk = res;
         }
         if (STORES[i].execE == currCycle && STORES[i].Qk == 0)
-
+            
         {
             memory[STORES[i].address] = STORES[i].Vk;
-
+            
         }
     }
 }
@@ -305,15 +305,15 @@ void issue(vector<instruction>& program) {
     if (instIndex < program.size()) {
         if (program[instIndex].op == "LOAD") {
             int emptyRes = -1;
-
+            
             for (int i = 0; i < LOADERS.size(); i++) {
                 if (!(LOADERS[i].busy)) {
                     emptyRes = i;
                     break;
                 }
             }
-
-
+            
+            
             if (emptyRes >= 0) { //if we did find an empty reservation station to issue to, save its index
                 if (registerStatus[program[instIndex].r1].Qi >
                     0) {  //if the register r1 is waiting for input from another station/instrcution, RAW
@@ -322,23 +322,23 @@ void issue(vector<instruction>& program) {
                     LOADERS[emptyRes].Vj = registerVal[program[instIndex].r1];
                     LOADERS[emptyRes].Qj = 0;
                 }
-
+                
                 if (branch) {
                     MightFlush.push_back(LOADERS[emptyRes].instIndex);
                 }
-
+                
                 registerStatus[program[instIndex].rd].Qi = LOADERS[emptyRes].unit; //to know the unit that the rd is waiting for output from
                 LOADERS[emptyRes].address = program[instIndex].r2; //as we store immediate in r2 as well
                 LOADERS[emptyRes].busy = true;
                 LOADERS[emptyRes].operation = "LOAD";
-
+                
                 startIss.push_back(currCycle);
                 LOADERS[emptyRes].instIndex = startIss.size() - 1;
-
+                
                 LOADERS[emptyRes].rd = program[instIndex].rd;
                 instIndex++;
-
-
+                
+                
             }
         } else if (program[instIndex].op == "STORE") {
             int emptyRes = -1;
@@ -356,22 +356,22 @@ void issue(vector<instruction>& program) {
                     STORES[emptyRes].Vj = registerVal[program[instIndex].r1];
                     STORES[emptyRes].Qj = 0;
                 }
-
+                
                 if (branch) {
                     MightFlush.push_back(STORES[emptyRes].instIndex);
                 }
-
+                
                 registerStatus[program[instIndex].rd].Qi = STORES[emptyRes].unit; //to know the unit that the rd is waiting for output from
                 STORES[emptyRes].address = program[instIndex].r2; //as we store immediate in r2 as well
                 STORES[emptyRes].busy = true;
                 STORES[emptyRes].operation = "STORE";
-
+                
                 startIss.push_back(currCycle);
                 STORES[emptyRes].instIndex = startIss.size() - 1;
-
+                
                 STORES[emptyRes].rd = program[instIndex].rd;
                 instIndex++;
-
+                
             }
         } else if (program[instIndex].op == "ADD" || program[instIndex].op == "ADDI") {
             int emptyRes = -1;
@@ -382,7 +382,7 @@ void issue(vector<instruction>& program) {
                 }
             }
             if (emptyRes >= 0) { //if we did find an empty reservation station to issue to, save its index
-
+                
                 if (registerStatus[program[instIndex].r1].Qi >
                     0) {  //if the register r1 is waiting for input from another station/instrcution, RAW
                     ADDERS[emptyRes].Qj = registerStatus[program[instIndex].r1].Qi;
@@ -390,34 +390,34 @@ void issue(vector<instruction>& program) {
                     ADDERS[emptyRes].Vj = registerVal[program[instIndex].r1];
                     ADDERS[emptyRes].Qj = 0;
                 }
-
+                
                 if (registerStatus[program[instIndex].r2].Qi > 0) {  //checking for RAW for register 2
                     ADDERS[emptyRes].Qk = registerStatus[program[instIndex].r2].Qi;
                 } else if (registerStatus[program[instIndex].r2].Qi == 0) { //otherwise the register is free
                     ADDERS[emptyRes].Vk = registerVal[program[instIndex].r2];
                     ADDERS[emptyRes].Qk = 0;
                 }
-
+                
                 if (program[instIndex].op == "ADD")
                     ADDERS[emptyRes].operation = "ADD";
-
+                
                 else
                     ADDERS[emptyRes].operation = "ADDI";
-
+                
                 if (branch) {
                     MightFlush.push_back(ADDERS[emptyRes].instIndex);
                 }
                 ADDERS[emptyRes].busy = true;
                 registerStatus[program[instIndex].rd].Qi = ADDERS[emptyRes].unit; //to know the unit that the rd is waiting for output from
                 startIss.push_back(currCycle);
-
+                
                 ADDERS[emptyRes].instIndex = startIss.size() - 1;
                 ADDERS[emptyRes].rd = program[instIndex].rd;
                 instIndex++;
             }
-
+            
         } else if (program[instIndex].op == "NAND") {
-
+            
             int emptyRes = -1;
             for (int i = 0; i < NAND.size(); i++) {
                 if (!(NAND[i].busy)) {
@@ -432,14 +432,14 @@ void issue(vector<instruction>& program) {
                     NAND[emptyRes].Vj = registerVal[program[instIndex].r1];
                     NAND[emptyRes].Qj = 0;
                 }
-
+                
                 if (registerStatus[program[instIndex].r2].Qi > 0) { // Check for RAW on r2
                     NAND[emptyRes].Qk = registerStatus[program[instIndex].r2].Qi;
                 } else {
                     NAND[emptyRes].Vk = registerVal[program[instIndex].r2];
                     NAND[emptyRes].Qk = 0;
                 }
-
+                
                 if (branch) {
                     MightFlush.push_back(NAND[emptyRes].instIndex);
                 }
@@ -447,16 +447,16 @@ void issue(vector<instruction>& program) {
                 NAND[emptyRes].operation = "NAND";
                 NAND[emptyRes].busy = true;
                 registerStatus[program[instIndex].rd].Qi = NAND[emptyRes].unit; // Mark rd as waiting for this unit
-
+                
                 startIss.push_back(currCycle);
-
+                
                 NAND[emptyRes].instIndex = startIss.size() - 1;
                 NAND[emptyRes].rd = program[instIndex].rd;
                 instIndex++;
                 //            cout<<"NAND rd"<<NAND[emptyRes].rd;
             }
-
-
+            
+            
         } else if (program[instIndex].op == "DIV") {
             int emptyRes = -1;
             for (int i = 0; i < DIV.size(); i++) {
@@ -468,34 +468,34 @@ void issue(vector<instruction>& program) {
             if (emptyRes >= 0) { // If an empty reservation station is found
                 if (registerStatus[program[instIndex].r1].Qi > 0) { // Check for RAW on r1
                     DIV[emptyRes].Qj = registerStatus[program[instIndex].r1].Qi;
-
+                    
                 } else {
                     DIV[emptyRes].Vj = registerVal[program[instIndex].r1];
                     DIV[emptyRes].Qj = 0;
-
+                    
                 }
-
+                
                 if (registerStatus[program[instIndex].r2].Qi > 0) { // Check for RAW on r2
                     DIV[emptyRes].Qk = registerStatus[program[instIndex].r2].Qi;
                 } else {
                     DIV[emptyRes].Vk = registerVal[program[instIndex].r2];
                     DIV[emptyRes].Qk = 0;
                 }
-
+                
                 if (branch) {
                     MightFlush.push_back(DIV[emptyRes].instIndex);
                 }
                 DIV[emptyRes].operation = "DIV";
                 DIV[emptyRes].busy = true;
                 registerStatus[program[instIndex].rd].Qi = DIV[emptyRes].unit; // Mark rd as waiting for this unit
-
+                
                 startIss.push_back(currCycle);
-
+                
                 DIV[emptyRes].instIndex = startIss.size() - 1;
                 DIV[emptyRes].rd = program[instIndex].rd;
                 instIndex++;
             }
-
+            
         } else if (program[instIndex].op == "BNE") {
             int emptyRes = -1;
             for (int i = 0; i < BNE.size(); i++) {
@@ -507,28 +507,28 @@ void issue(vector<instruction>& program) {
             if (emptyRes >= 0) { // If an empty reservation station is found
                 if (registerStatus[program[instIndex].r1].Qi > 0) { // Check for RAW on r1
                     BNE[emptyRes].Qj = registerStatus[program[instIndex].r1].Qi;
-
+                    
                 } else {
                     BNE[emptyRes].Vj = registerVal[program[instIndex].r1];
                     BNE[emptyRes].Qj = 0;
-
+                    
                 }
-
+                
                 if (registerStatus[program[instIndex].r2].Qi > 0) { // Check for RAW on r2
                     BNE[emptyRes].Qk = registerStatus[program[instIndex].r2].Qi;
                 } else {
                     BNE[emptyRes].Vk = registerVal[program[instIndex].r2];
                     BNE[emptyRes].Qk = 0;
                 }
-
+                
                 BNE[emptyRes].operation = "BNE";
                 BNE[emptyRes].busy = true;
                 registerStatus[program[instIndex].rd].Qi = BNE[emptyRes].unit; // Mark rd as waiting for this unit
-
+                
                 startIss.push_back(currCycle);
-
+                
                 BNE[emptyRes].instIndex = startIss.size() - 1;
-
+                
                 BNE[emptyRes].rd = labels[program[instIndex].label];
                 branch = true;
                 branchissue = instIndex;
@@ -545,44 +545,44 @@ void issue(vector<instruction>& program) {
             }
             if (emptyRes >= 0) { // If an empty reservation station is found
                 if (program[instIndex].op == "CALL") { // case CALL
-
+                    
                     CALLRET[emptyRes].operation = "CALL";
                     CALLRET[emptyRes].busy = true;
                     startIss.push_back(currCycle);
-
+                    
                     CALLRET[emptyRes].instIndex = startIss.size() - 1;
-
+                    
                     CALLRET[emptyRes].address = labels[program[instIndex].label];
                     branch = true;
                     instIndex++;
-
+                    
                 } else if (program[instIndex].op == "RET") { //case RET
-
+                    
                     CALLRET[emptyRes].operation = "RET";
                     CALLRET[emptyRes].busy = true;
                     startIss.push_back(currCycle);
-
+                    
                     CALLRET[emptyRes].instIndex = startIss.size() - 1;
-
+                    
                     registerStatus[1].Qi = DIV[emptyRes].unit;
-
+                    
                     CALLRET[emptyRes].address = labels[program[instIndex].label];
                     branch = true;
                     instIndex++;
                 }
-
-
+                
+                
             }
         }
     }
 }
 void execute(){
-
-
+    
+    
     for(int i = 0; i < ADDERS.size(); i++){
         if (ADDERS[i].operation=="ADD") {
             if(ADDERS[i].Qj == 0 && ADDERS[i].Qk == 0 && !(ADDERS[i].executing) && ((!branch) || (branch && startIss[ADDERS[i].instIndex] < branchissue ))){
-
+                
                 ADDERS[i].execS = currCycle;
                 ADDERS[i].execE = currCycle + addC;
                 ADDERS[i].executing = 1;
@@ -591,21 +591,21 @@ void execute(){
                 ADDERS[i].result = ADDERS[i].Vk + ADDERS[i].Vj;
             }
         } else if (ADDERS[i].operation=="ADDI"){
-
+            
             if(ADDERS[i].Qj == 0 && ADDERS[i].Qk == 0 && !(ADDERS[i].executing)&& ((!branch) || (branch && startIss[ADDERS[i].instIndex] < branchissue ))){
-
+                
                 ADDERS[i].execS = currCycle;
                 ADDERS[i].execE = currCycle + addC;
                 ADDERS[i].executing = 1;
                 startExec[ADDERS[i].instIndex] = currCycle;
                 endExec[ADDERS[i].instIndex] = currCycle + addC;
                 ADDERS[i].result = ADDERS[i].Vk + ADDERS[i].imm;
-
+                
             }
         }
-
+        
     }
-
+    
     for (int i = 0; i < NAND.size(); i++) {
         if (NAND[i].operation == "NAND") {
             if (NAND[i].Qj == 0 && NAND[i].Qk == 0 && !NAND[i].executing&& ((!branch) || (branch && startIss[NAND[i].instIndex] < branchissue ))) {
@@ -617,9 +617,9 @@ void execute(){
                 NAND[i].result = ~(NAND[i].Vk & NAND[i].Vj);
             }
         }
-
+        
     }
-
+    
     for (int i = 0; i < DIV.size(); i++) {
         if (DIV[i].operation == "DIV") {
             //            cout<<"Qk"<<DIV[i].Qk<<endl;
@@ -632,9 +632,9 @@ void execute(){
                 //              DIV[i].result = DIV[i].Vk / DIV[i].Vj;
             }
         }
-
+        
     }
-
+    
     for (int i = 0; i < LOADERS.size(); i++) {
         if (LOADERS[i].operation == "LOAD") {
             if (LOADERS[i].Qj == 0  && !LOADERS[i].executing&& ((!branch) || (branch && startIss[LOADERS[i].instIndex] < branchissue ))) {
@@ -644,11 +644,11 @@ void execute(){
                 startExec[LOADERS[i].instIndex] = currCycle;
                 endExec[LOADERS[i].instIndex] = currCycle + loadC;
             }
-
+            
             LOADERS[i].address = LOADERS[i].address + LOADERS[i].Vj;
             LOADERS[i].result = memory[LOADERS[i].address];
         }
-
+        
     }
     for (int i = 0; i < STORES.size(); i++) {
         if (STORES[i].operation == "STORE") {
@@ -663,7 +663,7 @@ void execute(){
             STORES[i].address = STORES[i].address + STORES[i].Vj;
             STORES[i].result = registerVal[STORES[i].rd];
         }
-
+        
     }
     for (int i = 0; i < BNE.size(); i++) {
         if (BNE[i].operation == "BNE") {
@@ -673,18 +673,18 @@ void execute(){
                 BNE[i].executing = 1;
                 startExec[BNE[i].instIndex] = currCycle;
                 endExec[BNE[i].instIndex] = currCycle + bneC;
-
+                
                 if (BNE[i].Vj!=BNE[i].Vk)
                     BNE[i].result=1;
                 else
                     BNE[i].result=0;
-
+                
                 if (BNE[i].result==1) {
-
+                    
                     willFlush=1;
                 } else willFlush=0;
             }
-
+            
             if((endExec[BNE[i].instIndex]==currCycle) || (abs((instIndex - BNE[i].rd))==currCycle)){
                 branch=0;
                 willFlush=0;
@@ -705,17 +705,17 @@ void execute(){
                 startExec[CALLRET[i].instIndex] = currCycle;
                 endExec[CALLRET[i].instIndex] = currCycle + callretC;
                 willFlush=1;
-
+                
             }
-
-
+            
+            
             if(endExec[CALLRET[i].instIndex]==currCycle){
-
+                
                 branch=0;
                 willFlush=0;
                 branchissue=8888888;
                 instIndex=instIndex+1+CALLRET[i].address;
-
+                
             }
         }
         else if (CALLRET[i].operation == "RET") {
@@ -727,28 +727,28 @@ void execute(){
                 endExec[CALLRET[i].instIndex] = currCycle + callretC;
                 willFlush=1;
             }
-
+            
             if(endExec[CALLRET[i].instIndex]==currCycle){
-
+                
                 branch=0;
                 willFlush=0;
                 branchissue=8888888;
                 instIndex=instIndex+1+CALLRET[i].rd;
-
+                
             }
         }
-
+        
     }
 }
 
 
 void writeBack(){
-
+    
     for(int i = 0; i < ADDERS.size(); i++){
         if(endExec[ADDERS[i].instIndex] + 1 <= currCycle && ADDERS[i].executing && ADDERS[i].busy){
             //            index = i;
             //            out = ADDERS[i].unitType;
-
+            
             //releasing the reservation station, updating the registers and dependencies
             updateRegs(ADDERS[i].result, ADDERS[i].unit);
             updateUnits(ADDERS[i].result, ADDERS[i].unit);
@@ -777,11 +777,11 @@ void writeBack(){
             NAND[i].Vk = -1;
             if (ADDERS[i].rd!=0){
                 registerVal[NAND[i].rd] = NAND[i].result;
-
+                
             }
         }
     }
-
+    
     for (int i=0; i<DIV.size();i++){
         if (endExec[DIV[i].instIndex] +1 <= currCycle && DIV[i].executing && DIV[i].busy) {
             updateRegs(DIV[i].result, DIV[i].unit);
@@ -794,14 +794,14 @@ void writeBack(){
             DIV[i].Vj = -1;
             DIV[i].Vk = -1;
             if (DIV[i].rd!=0){
-
+                
                 registerVal[DIV[i].rd] = DIV[i].result;
             }
         }
     }
     for (int i = 0 ; i<LOADERS.size(); i++) {
         if(endExec[LOADERS[i].instIndex]+1 <= currCycle && LOADERS[i].executing &&LOADERS[i].busy){
-
+            
             updateRegs(LOADERS[i].result, LOADERS[i].unit);
             updateUnits(LOADERS[i].result, LOADERS[i].unit);
             LOADERS[i].busy=false;
@@ -811,19 +811,19 @@ void writeBack(){
             LOADERS[i].Qk = -1;
             LOADERS[i].Vj = -1;
             LOADERS[i].Vk = -1;
-
-
+            
+            
             if (LOADERS[i].rd!=0)
             {
-
+                
                 registerVal[LOADERS[i].rd] = LOADERS[i].result;
             }
         }
     }
-
+    
     for (int i = 0 ; i<STORES.size(); i++) {
         if(endExec[STORES[i].instIndex]+1 <= currCycle && STORES[i].executing &&STORES[i].busy){
-
+            
             updateRegs(STORES[i].result, STORES[i].unit);
             updateUnits(STORES[i].result, STORES[i].unit);
             STORES[i].busy=false;
@@ -833,14 +833,14 @@ void writeBack(){
             STORES[i].Qk = -1;
             STORES[i].Vj = -1;
             STORES[i].Vk = -1;
-
-
+            
+            
             memory[STORES[i].address] = STORES[i].result;
         }
     }
     for (int i = 0 ; i<BNE.size(); i++) {
         if(endExec[BNE[i].instIndex]+1 <= currCycle && BNE[i].executing && BNE[i].busy){
-
+            
             updateRegs(BNE[i].result, BNE[i].unit);
             updateUnits(BNE[i].result, BNE[i].unit);
             BNE[i].busy=false;
@@ -850,9 +850,9 @@ void writeBack(){
             BNE[i].Qk = -1;
             BNE[i].Vj = -1;
             BNE[i].Vk = -1;
-
+            
             if (willFlush==1) {
-
+                
                 for (int i=0; i<MightFlush.size(); i++) {
                     startExec[MightFlush[i]]=0; endExec[MightFlush[i]]=0; startWB[MightFlush[i]]=0; // if branch is taken we will flush all next instructions
                 }
@@ -862,7 +862,7 @@ void writeBack(){
     }
     for (int i = 0 ; i<CALLRET.size(); i++) {
         if(endExec[CALLRET[i].instIndex]+1 <= currCycle && CALLRET[i].executing && CALLRET[i].busy){
-
+            
             updateRegs(CALLRET[i].result, CALLRET[i].unit);
             updateUnits(CALLRET[i].result, CALLRET[i].unit);
             CALLRET[i].busy=false;
@@ -872,9 +872,9 @@ void writeBack(){
             CALLRET[i].Qk = -1;
             CALLRET[i].Vj = -1;
             CALLRET[i].Vk = -1;
-
+            
             if (willFlush==1) {
-
+                
                 for (int i=0; i<MightFlush.size(); i++) {
                     startExec[MightFlush[i]]=0; endExec[MightFlush[i]]=0; startWB[MightFlush[i]]=0; // if branch is taken we will flush all next instructions
                 }
@@ -886,19 +886,19 @@ void writeBack(){
 
 // Function to print Tomasulo's table
 void printTomasulosTable(const vector<instruction>& program) {
-
+    
     cout << left << setw(15) << "Instruction"
-         << setw(12) << "Issue"
-         << setw(15) << "Start Exec"
-         << setw(15) << "End Exec"
-         << setw(12) << "Write Back" << endl;
-
+    << setw(12) << "Issue"
+    << setw(15) << "Start Exec"
+    << setw(15) << "End Exec"
+    << setw(12) << "Write Back" << endl;
+    
     for (int i = 0; i < program.size(); i++) {
         cout << left << setw(15) << program[i].fullInst
-             << setw(12) << startIss[i]
-             << setw(15) << startExec[i]
-             << setw(15) << endExec[i]
-             << setw(12) << startWB[i] << endl;
+        << setw(12) << startIss[i]
+        << setw(15) << startExec[i]
+        << setw(15) << endExec[i]
+        << setw(12) << startWB[i] << endl;
     }
 }
 
@@ -906,6 +906,8 @@ void printTomasulosTable(const vector<instruction>& program) {
 
 
 int main() {
+
+    
     cout << "Input numbers of reservation stations for adding: " ; cin >> ADDERSrs;
     cout << "Input numbers of reservation stations for BNE: " ; cin >> BNErs;
     cout << "Input numbers of reservation stations for division: " ; cin >> DIVERSrs;
@@ -913,7 +915,7 @@ int main() {
     cout << "Input numbers of reservation stations for CALL/RET: " ; cin >> CALL_RETrs;
     cout << "Input numbers of reservation stations for loading: " ; cin >> LOADrs;
     cout << "Input numbers of reservation stations for storing: " ; cin >> STORErs;
-//int addC, divC, storeC, loadC, bneC, callretC, nandC;
+    //int addC, divC, storeC, loadC, bneC, callretC, nandC;
     cout << "Input cycles for addition: "; cin >> addC;
     cout << "Input cycles for divison: "; cin >> divC;
     cout << "Input cycles for BNE: "; cin >> bneC;
@@ -922,16 +924,16 @@ int main() {
     cout << "Input cycles for NAND: "; cin >> nandC;
     cout << "Input cycles for CALL/RET: "; cin >> callretC;
     registerVal[2] = 10; registerVal[3] = 20; registerVal[1] = 5;
-
+    
     ADDERS.resize(ADDERSrs); STORES.resize(STORErs); LOADERS.resize(LOADrs); BNE.resize(BNErs);
     DIV.resize(DIVERSrs); NAND.resize(NANDERSrs); CALLRET.resize(CALL_RETrs);
     double max = -100;
-
+    
     vector<instruction> program;
     readMemory("/Users/muhammadabdelmohsen/Desktop/CE Projects/Computer Arch Project/Arch-project2/Memory.txt");
     readFile( "/Users/muhammadabdelmohsen/Desktop/CE Projects/Computer Arch Project/Arch-project2/TESTcases3.txt",program, labels);
     setCycles(program);
-
+    
     initializeResStat();
     while(currCycle < 100){
         issue(program);
@@ -941,19 +943,19 @@ int main() {
         execute();
     }
     printTomasulosTable(program); // Add this line to call the print function
-
+    
     for(int i = 0; i < startWB.size(); i++) if(max < startWB[i]) max = startWB[i];
     double IPC = program.size()/max;
-
+    
     cout << "IPC = " << IPC << endl;
     cout<<"Total execution Time: "<<max<<endl;
     if(branchencountered!=0){
         cout<<"Percentage of Branch Misprediction = "<<(branchtaken/branchencountered)*100<<endl;
     } else
         cout<<"No Branch is encountered"<<endl;
-
+    
     return 0;
-
+    
 }
 //unordered_map<string, instruction> find_insts; //map that maybe i will need for execution later, an idea bs for now
 
